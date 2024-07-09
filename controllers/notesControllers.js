@@ -21,6 +21,7 @@ export const createNote = async (req, res) => {
   const note = new Note({
     title: req.body.title,
     content: req.body.content,
+    color: req.body.color,
   });
   try {
     const newNote = await note.save();
