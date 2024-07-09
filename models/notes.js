@@ -14,6 +14,10 @@ const noteSchema = new mongoose.Schema({
     type: String,
     required: true,
   },  
+  isDeleted: {
+    type: Boolean,
+    default: false,
+  },
   });
 
 const Note = mongoose.model('Note', noteSchema);
