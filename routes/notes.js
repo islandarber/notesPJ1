@@ -7,7 +7,7 @@ notesRouter.get('/', getNotes);
 notesRouter.get('/deleted', getDNotes);
 notesRouter.post('/', createNote);
 notesRouter.put('/:id', editNote);
-notesRouter.delete('/soft/:id', deleteNote);
+notesRouter.delete('/soft/:id', softDeleteNote);
 notesRouter.delete('/:id', deleteNote);
 
 export default notesRouter;

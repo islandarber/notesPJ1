@@ -36,6 +36,7 @@ export const editNote = async (req, res) => {
   const note = {
     title: req.body.title,
     content: req.body.content,
+    isDeleted: req.body.isDeleted,
   };
   if (!id) {
     res.status(400).json({ message: 'not Found' });
