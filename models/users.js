@@ -21,6 +21,12 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Note',
   }],
+  resetPasswordToken : {
+    type: String,
+  },
+  resetPasswordExpires : {
+    type: Date,
+  },
 });
 
 const User = mongoose.model('User', userSchema);
