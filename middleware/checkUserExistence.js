@@ -14,6 +14,7 @@ export const checkUser = async (req, res, next) => {
       return res.status(400).json({ message: 'Username already exists' });
     }
 
+    console.log('User checked');
     next();
   } catch (error) {
     return res.status(500).json({ message: error.message });

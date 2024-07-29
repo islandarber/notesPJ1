@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 
 export const authMiddleware = (req, res, next) => {
-    const secretToken = process.env.SECRET_TOKEN;
+    const secretToken = process.env.secretToken;
 
     const authHeader = req.headers.authorization;
 
@@ -15,11 +15,8 @@ export const authMiddleware = (req, res, next) => {
      if(err){
           return res.sendStatus(403)
      }
-     // Console to check token result after being recorded by jwt.verify method
-     console.log(user, 'token decoded')
      req.user = user;
      next()
-
     })
 
  

@@ -5,7 +5,7 @@ import nodemailer from 'nodemailer';
 
 
 
-const secretToken = process.env.SECRET_TOKEN;
+const secretToken = process.env.secretToken;
 
 const generateToken = (data) => {
   return jwt.sign(data, secretToken, { expiresIn: '1h' });
@@ -29,6 +29,7 @@ export const loginUser = async (req, res) => {
 
     res.json({ user, token });
   }catch (error) {
+    console.log(error);
     return res.status(500).json({ message: error.message });
   }
 }
@@ -76,13 +77,54 @@ export const deleteUser = async (req, res) => {
 };
 
 export const sendEmail = async (req, res) => {
-  const {email} = req.body;
+  const { email } = req.body;
+  console.log("im here now", email);
 
-  const resetToken = generateToken();
-  User.resetPasswordToken = resetToken;
-  User.resetPasswordExpires = Date.now() + 3600000; // 1 hour
-  await User.save();
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
 
+    const resetToken = generateToken({ id: user._id });
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
+    await user.save();
+
+    let transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.myEmail,
+        pass: process.env.myPassword,
+      },
+    });
+
+    let mailOptions = {
+      from: process.env.myEmail,
+      to: email,
+      subject: 'Reset Password',
+      text: `You are receiving this because you (or someone else) have requested the reset of the password for your account.\n\n
+      Please click on the following link, or paste this into your browser to complete the process:\n\n
+      http://localhost:5173/reset/${resetToken}\n\n
+      If you did not request this, please ignore this email and your password will remain unchanged.\n`,
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.error(error);
+        return res.status(500).json({ message: 'Error sending email' });
+      }
+      res.status(200).json({ message: 'Password reset email sent' });
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+
+
+const sendConfirmationEmail = async (email) => {
   let transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
@@ -94,20 +136,20 @@ export const sendEmail = async (req, res) => {
   let mailOptions = {
     from: process.env.myEmail,
     to: email,
-    subject: 'Reset Password',
-    text: `You are receiving this because you (or someone else) have requested the reset of the password for your account.\n\n
-    Please click on the following link, or paste this into your browser to complete the process:\n\n
-     http://localhost:3000/reset/${resetToken}\n\n
-    If you did not request this, please ignore this email and your password will remain unchanged.\n`
+    subject: 'Password Updated Successfully',
+    text: `Your password has been updated successfully. If you did not request this change, please contact our support immediately.`
   };
 
-    transporter.sendMail(mailOptions, (error, info) => {
+  transporter.sendMail(mailOptions, (error, info) => {
     if (error) {
-      return res.status(500).json({ message: 'Error sending email' });
+      console.error('Error sending confirmation email:', error);
+    } else {
+      console.log('Confirmation email sent:', info.response);
     }
-    res.status(200).json({ message: 'Password reset email sent' });
-    });
+  });
 };
+
+
 
 export const passwordResetConfirm = async (req, res) => {
   const { token, password } = req.body;
@@ -127,6 +169,9 @@ export const passwordResetConfirm = async (req, res) => {
   user.resetPasswordToken = undefined; // Clear the reset token
   user.resetPasswordExpires = undefined; // Clear the expiration date
   await user.save();
+  await sendConfirmationEmail(user.email);
+
 
   res.status(200).json({ message: 'Password has been successfully reset' });
+
 };

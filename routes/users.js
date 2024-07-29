@@ -9,7 +9,7 @@ usersRouter.get('/',authMiddleware, getUser);
 usersRouter.post('/login',loginUser);
 usersRouter.post('/register',checkUser, registerUser);
 usersRouter.delete('/:id', deleteUser);
-usersRouter.post('reset-password', checkUser, sendEmail )
+usersRouter.post('/reset-password',sendEmail )
 usersRouter.post('/reset-password/confirm', passwordResetConfirm )
 
 export default usersRouter;
