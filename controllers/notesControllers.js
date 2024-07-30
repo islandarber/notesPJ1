@@ -1,7 +1,10 @@
 import Note from '../models/notes.js';
+import User from '../models/users.js';
+
 export const getNotes = async (req, res) => {
+  const userId = req.user.id;
   try {
-    const notes = await Note.find({ isDeleted: false});
+    const notes = await Note.find({ user: userId, isDeleted: false }).populate('user');
     res.json(notes);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -9,8 +12,9 @@ export const getNotes = async (req, res) => {
 };
 
 export const getDNotes = async (req, res) => {
+  const userId = req.user.id;
   try {
-    const notes = await Note.find({ isDeleted: true});
+    const notes = await Note.find({ user: userId, isDeleted: true }).populate('user');
     res.json(notes);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -18,76 +22,97 @@ export const getDNotes = async (req, res) => {
 };
 
 export const createNote = async (req, res) => {
-  const note = new Note({
-    title: req.body.title,
-    content: req.body.content,
-    color: req.body.color,
-  });
+  const { title, content, color } = req.body;
+  const { id } = req.user; 
   try {
-    const newNote = await note.save();
-    res.status(201).json(newNote);
+    const note = new Note({
+      title,
+      content,
+      color,
+      user: id,
+    });
+    const savedNote = await note.save();
+    await User.findByIdAndUpdate(id, { $push: { notes: savedNote._id } });
+    return res.status(201).json(savedNote);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 };
 
 export const editNote = async (req, res) => {
   const { id } = req.params;
-  const note = {
+  const userId = req.user.id; // Get the authenticated user's ID
+
+  if (!id) {
+    return res.status(400).json({ message: 'Note ID not provided' });
+  }
+
+  const noteUpdates = {
     title: req.body.title,
     content: req.body.content,
     isDeleted: req.body.isDeleted,
     date: new Date(),
   };
-  if (!id) {
-    res.status(400).json({ message: 'not Found' });
-    return;
+
+  try {
+    // Find the note to ensure it belongs to the authenticated user
+    const note = await Note.findOne({ _id: id, user: userId });
+
+    if (!note) {
+      return res.status(404).json({ message: 'Note not found' });
+    }
+
+    // Update the note
+    const editedNote = await Note.findByIdAndUpdate(id, noteUpdates, { new: true }).populate('user');
+    return res.json(editedNote);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
   }
-    try {
-      const editedNote = await Note.findByIdAndUpdate(id, note, { new: true });
-      res.json(editedNote);
-    }
-    catch (error) {
-      res.status(400).json({ message: error.message });
-    }
- 
 };
+
 
 export const softDeleteNote = async (req, res) => {
   const { id } = req.params;
+  const userId = req.user.id;
+
   if (!id) {
-    res.status(400).json({ message: 'not Found' });
-    return;
+    return res.status(400).json({ message: 'Not Found' });
   }
+
   try {
-    const note = await Note.findById(id);
+    const note = await Note.findOne({ _id: id, user: userId });
+
     if (!note) {
-      res.status(404).json({ message: 'Note not found' });
-    } else {
-      note.isDeleted = true;
-      await note.save();
-      res.json(note);
+      return res.status(404).json({ message: 'Note not found' });
     }
+
+    note.isDeleted = true;
+    await note.save();
+    return res.json(note);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
   }
-  catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-}
+};
+
 
 export const deleteNote = async (req, res) => {
   const { id } = req.params;
+  const userId = req.user.id;
+
   if (!id) {
-    res.status(400).json({ message: 'not Found' });
-    return;
+    return res.status(400).json({ message: 'Not Found' });
   }
+
   try {
-    const deletedNote = await Note.findByIdAndDelete(id);
-    if (!deletedNote) {
-      res.status(404).json({ message: 'Note not found' });
-    } else {
-      res.json({ message: 'Note deleted successfully' });
+    const note = await Note.findOne({ _id: id, user: userId });
+
+    if (!note) {
+      return res.status(404).json({ message: 'Note not found' });
     }
+
+    await Note.findByIdAndDelete(id);
+    return res.json({ message: 'Note deleted successfully' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 };

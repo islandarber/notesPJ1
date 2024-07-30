@@ -1,55 +1,47 @@
 import User from '../models/users.js';
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
-
-
+import jwt from 'jsonwebtoken';
 
 const secretToken = process.env.secretToken;
 
 const generateToken = (data) => {
   return jwt.sign(data, secretToken, { expiresIn: '1h' });
-}
+};
 
 export const loginUser = async (req, res) => {
   const { email, password } = req.body;
-  try { 
+  try {
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
     const validPassword = await bcrypt.compare(password, user.password);
-
     if (!validPassword) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    const token = generateToken({email: user.email, id: user._id })
-
+    const token = generateToken({ email: user.email, id: user._id });
     res.json({ user, token });
-  }catch (error) {
-    console.log(error);
+  } catch (error) {
     return res.status(500).json({ message: error.message });
   }
-}
+};
 
 export const registerUser = async (req, res) => {
-
-  const {username, email, password } = req.body;
+  const { username, email, password } = req.body;
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = await User.create({username, email, password: hashedPassword });
+    const newUser = await User.create({ username, email, password: hashedPassword });
     return res.status(201).json(newUser);
-  }
-  catch (error) {
-    console.log(error);
+  } catch (error) {
     return res.status(500).json({ message: error.message });
   }
 };
 
 export const getUser = async (req, res) => {
-  const {id} = req.user;
+  const { id } = req.user; // Assuming req.user contains the authenticated user's ID
   try {
     const data = await User.findById(id).populate('notes');
     if (!data) {
@@ -58,12 +50,12 @@ export const getUser = async (req, res) => {
       return res.json(data);
     }
   } catch (error) {
-    res.sendStatus(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 };
 
 export const deleteUser = async (req, res) => {
-  const {id} = req.params;
+  const { id } = req.params;
   try {
     const data = await User.findByIdAndDelete(id);
     if (!data) {
@@ -72,14 +64,12 @@ export const deleteUser = async (req, res) => {
       return res.json(data);
     }
   } catch (error) {
-    res.sendStatus(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 };
 
 export const sendEmail = async (req, res) => {
   const { email } = req.body;
-  console.log("im here now", email);
-
   try {
     const user = await User.findOne({ email });
     if (!user) {
@@ -111,33 +101,29 @@ export const sendEmail = async (req, res) => {
 
     transporter.sendMail(mailOptions, (error, info) => {
       if (error) {
-        console.error(error);
         return res.status(500).json({ message: 'Error sending email' });
       }
       res.status(200).json({ message: 'Password reset email sent' });
     });
   } catch (error) {
-    console.error(error);
     res.status(500).json({ message: 'Server error' });
   }
 };
-
-
 
 const sendConfirmationEmail = async (email) => {
   let transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
       user: process.env.myEmail,
-      pass: process.env.myPassword
-    }
+      pass: process.env.myPassword,
+    },
   });
 
   let mailOptions = {
     from: process.env.myEmail,
     to: email,
     subject: 'Password Updated Successfully',
-    text: `Your password has been updated successfully. If you did not request this change, please contact our support immediately.`
+    text: `Your password has been updated successfully. If you did not request this change, please contact our support immediately.`,
   };
 
   transporter.sendMail(mailOptions, (error, info) => {
@@ -149,15 +135,13 @@ const sendConfirmationEmail = async (email) => {
   });
 };
 
-
-
 export const passwordResetConfirm = async (req, res) => {
   const { token, password } = req.body;
 
   // Validate reset token and find user
   const user = await User.findOne({
     resetPasswordToken: token,
-    resetPasswordExpires: { $gt: Date.now() }
+    resetPasswordExpires: { $gt: Date.now() },
   });
 
   if (!user) {
@@ -171,7 +155,5 @@ export const passwordResetConfirm = async (req, res) => {
   await user.save();
   await sendConfirmationEmail(user.email);
 
-
   res.status(200).json({ message: 'Password has been successfully reset' });
-
 };

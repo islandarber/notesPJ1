@@ -4,6 +4,7 @@ export const authMiddleware = (req, res, next) => {
     const secretToken = process.env.secretToken;
 
     const authHeader = req.headers.authorization;
+    console.log(authHeader);
 
     if(!authHeader){
      return res.sendStatus(401)
