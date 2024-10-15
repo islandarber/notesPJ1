@@ -7,8 +7,7 @@ const noteSchema = new mongoose.Schema({
     default: Date.now,
   },
   title: {
-    type: String,
-    required: true,
+    type: String
   },
   content : {
     type: String,
